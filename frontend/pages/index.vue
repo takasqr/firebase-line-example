@@ -72,6 +72,9 @@
  * トップページのスクリプト
  * Script for top page
  */
+import { onMounted } from 'vue';
+import { useRoute } from 'nuxt/app';
+import { useAuth } from '../composables/useAuth';
 
 // 認証状態管理用 Composable の使用
 // Use authentication state management composable

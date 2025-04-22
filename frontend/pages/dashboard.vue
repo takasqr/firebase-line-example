@@ -116,6 +116,9 @@
  * ダッシュボードページのスクリプト
  * Script for dashboard page
  */
+import { onMounted, watch } from 'vue';
+import { navigateTo } from 'nuxt/app';
+import { useAuth } from '../composables/useAuth';
 
 // 認証状態管理用 Composable の使用
 // Use authentication state management composable
@@ -147,7 +150,7 @@ onMounted(() => {
 
 // 認証状態が変わったときにリダイレクト
 // Redirect when authentication state changes
-watch(isAuthenticated, (newValue) => {
+watch(isAuthenticated, (newValue: boolean) => {
   if (!isLoading.value && !newValue) {
     navigateTo('/');
   }

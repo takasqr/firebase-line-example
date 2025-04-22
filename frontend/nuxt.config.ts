@@ -2,7 +2,11 @@
  * Nuxt 3 設定ファイル
  * Nuxt 3 configuration file
  */
+// @ts-ignore
 export default defineNuxtConfig({
+  // 互換性日付の設定
+  // Compatibility date setting
+  compatibilityDate: '2025-04-22',
   // アプリケーションの設定
   // Application configuration
   app: {
@@ -71,7 +75,19 @@ export default defineNuxtConfig({
   // 自動インポート設定
   // Auto-import configuration
   imports: {
-    dirs: ['composables']
+    dirs: ['composables'],
+    imports: [
+      { from: 'vue', name: 'ref' },
+      { from: 'vue', name: 'computed' },
+      { from: 'vue', name: 'watch' },
+      { from: 'vue', name: 'onMounted' },
+      { from: 'vue', name: 'onUnmounted' },
+      { from: '#app', name: 'useNuxtApp' },
+      { from: '#app', name: 'useRuntimeConfig' },
+      { from: '#app', name: 'defineNuxtPlugin' },
+      { from: '#app', name: 'navigateTo' },
+      { from: '#app', name: 'useRoute' }
+    ]
   },
 
   // プラグイン設定

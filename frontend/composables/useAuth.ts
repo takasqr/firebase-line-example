@@ -6,33 +6,37 @@
  * This is a composable for managing Firebase Authentication state.
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { 
-  signInWithCustomToken, 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged, 
-  type User 
+import {
+  signInWithCustomToken,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  type User
 } from 'firebase/auth';
 import axios from 'axios';
 
 /**
  * 認証状態管理用 Composable
  * Authentication state management composable
- * 
+ *
  * @returns 認証関連の状態と関数
  * @returns Authentication related state and functions
  */
 export const useAuth = () => {
   // Nuxt アプリケーションの取得
   // Get Nuxt application
+  // @ts-ignore
   const nuxtApp = useNuxtApp();
   
   // Firebase Auth の取得
   // Get Firebase Auth
+  // @ts-ignore
   const auth = nuxtApp.$firebase?.auth;
   
-  // ランタイム設定の取得
-  // Get runtime config
-  const config = useRuntimeConfig();
+  // LINE設定の取得
+  // Get LINE configuration
+  const LINE_CHANNEL_ID = "2007305052";
+  const LINE_CALLBACK_URL = "http://localhost:3000";
+  const API_BASE_URL = "http://localhost:5001/dummy-project/us-central1/api";
   
   // 認証状態
   // Authentication state
@@ -57,7 +61,12 @@ export const useAuth = () => {
       isLoading.value = true;
       error.value = null;
       
-      if (!config.public.line.channelId) {
+      // LINE設定の取得
+      // Get LINE configuration
+      const LINE_CHANNEL_ID = "2007305052";
+      const LINE_CALLBACK_URL = "http://localhost:3000";
+      
+      if (!LINE_CHANNEL_ID) {
         throw new Error('LINE Channel ID is not configured');
       }
       
@@ -75,8 +84,8 @@ export const useAuth = () => {
       // Redirect to LINE authentication URL
       const lineAuthUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
       lineAuthUrl.searchParams.append('response_type', 'code');
-      lineAuthUrl.searchParams.append('client_id', config.public.line.channelId);
-      lineAuthUrl.searchParams.append('redirect_uri', config.public.line.callbackUrl);
+      lineAuthUrl.searchParams.append('client_id', LINE_CHANNEL_ID);
+      lineAuthUrl.searchParams.append('redirect_uri', LINE_CALLBACK_URL);
       lineAuthUrl.searchParams.append('state', state);
       lineAuthUrl.searchParams.append('scope', 'profile openid');
       lineAuthUrl.searchParams.append('nonce', nonce);
@@ -109,12 +118,13 @@ export const useAuth = () => {
       
       // LINE コールバック API を呼び出し
       // Call LINE callback API
-      const response = await axios.post(`${config.public.apiBaseUrl}/line-callback`, {
+      const API_BASE_URL = "http://localhost:5001/dummy-project/us-central1/api";
+      const response = await axios.post(`${API_BASE_URL}/line-callback`, {
         code,
         state
       });
       
-      const { token, user: userData } = response.data;
+      const { token } = response.data;
       
       if (!token) {
         throw new Error('Failed to get authentication token');
@@ -132,7 +142,7 @@ export const useAuth = () => {
         
         // ダッシュボードページへリダイレクト
         // Redirect to dashboard page
-        navigateTo('/dashboard');
+        window.location.href = '/dashboard';
       } else {
         throw new Error('Firebase Auth is not initialized');
       }
@@ -156,7 +166,7 @@ export const useAuth = () => {
         
         // トップページへリダイレクト
         // Redirect to top page
-        navigateTo('/');
+        window.location.href = '/';
       } else {
         throw new Error('Firebase Auth is not initialized');
       }

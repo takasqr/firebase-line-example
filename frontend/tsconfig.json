@@ -19,7 +19,8 @@
     },
     "types": [
       "@types/node",
-      "vitest/globals"
+      "vitest/globals",
+      "nuxt"
     ]
   },
   "exclude": [

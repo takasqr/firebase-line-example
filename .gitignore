@@ -1,0 +1,31 @@
+node_modules
+*.log
+.nuxt
+nuxt.d.ts
+.output
+.data
+.env
+.env.*
+framework
+dist
+.DS_Store
+
+# Yarn
+.yarn/cache
+.yarn/*state*
+
+# Local History
+.history
+
+# VSCode
+.vscode/
+
+# Playwright
+playwright-report
+
+test-results
+
+# GitHub Packages
+.npmrc
+
+playground.vue

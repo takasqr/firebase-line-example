@@ -7,6 +7,9 @@ export default defineNuxtConfig({
   // 互換性日付の設定
   // Compatibility date setting
   compatibilityDate: '2025-04-22',
+  // 静的サイト生成モードを有効化
+  // Enable static site generation mode
+  ssr: false,
   // アプリケーションの設定
   // Application configuration
   app: {

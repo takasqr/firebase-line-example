@@ -89,7 +89,16 @@ const route = useRoute();
 onMounted(() => {
   const { code, state } = route.query;
   
+  // デバッグ用ログ
+  // Debug log
+  console.log('URLパラメータ / URL parameters:', {
+    code,
+    state,
+    allParams: route.query
+  });
+  
   if (code && state && typeof code === 'string' && typeof state === 'string') {
+    console.log('LINE コールバック処理開始 / Starting LINE callback process');
     const { handleLineCallback } = useAuth();
     handleLineCallback(code, state);
   }

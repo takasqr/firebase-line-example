@@ -34,9 +34,9 @@ export const useAuth = () => {
   
   // LINE設定の取得
   // Get LINE configuration
-  const LINE_CHANNEL_ID = "2007305052";
-  const LINE_CALLBACK_URL = "http://localhost:3000";
-  const API_BASE_URL = "http://localhost:5001/dummy-project/us-central1/api";
+  // const LINE_CHANNEL_ID = "2007305052";
+  // const LINE_CALLBACK_URL = "http://localhost:3000";
+  // const API_BASE_URL = "http://localhost:5001/dummy-project/us-central1/api";
   
   // 認証状態
   // Authentication state
@@ -64,8 +64,16 @@ export const useAuth = () => {
       // LINE設定の取得
       // Get LINE configuration
       const LINE_CHANNEL_ID = "2007305052";
-      const LINE_CALLBACK_URL = "http://localhost:3000";
+      // const LINE_CALLBACK_URL = "https://fb-line-example.firebaseapp.com/__/auth/handler";
+      const LINE_CALLBACK_URL = "https://fb-line-example.web.app";
       
+      // デバッグ用ログ
+      // Debug log
+      console.log('LINE認証情報 / LINE authentication info:', {
+        channelId: LINE_CHANNEL_ID,
+        callbackUrl: LINE_CALLBACK_URL
+      });
+
       if (!LINE_CHANNEL_ID) {
         throw new Error('LINE Channel ID is not configured');
       }
@@ -90,6 +98,10 @@ export const useAuth = () => {
       lineAuthUrl.searchParams.append('scope', 'profile openid');
       lineAuthUrl.searchParams.append('nonce', nonce);
       
+      // デバッグ用ログ
+      // Debug log
+      console.log('LINE認証URL / LINE authentication URL:', lineAuthUrl.toString());
+      
       window.location.href = lineAuthUrl.toString();
     } catch (err) {
       error.value = err instanceof Error ? err : new Error('Unknown error');
@@ -112,13 +124,30 @@ export const useAuth = () => {
       // localStorage から state を取得して検証
       // Get state from localStorage and validate
       const savedState = localStorage.getItem('line_auth_state');
+      
+      // デバッグ用ログ
+      // Debug log
+      console.log('LINE コールバック検証 / LINE callback validation:', {
+        receivedState: state,
+        savedState: savedState,
+        isValid: state === savedState
+      });
+      
       if (state !== savedState) {
         throw new Error('Invalid state parameter');
       }
       
       // LINE コールバック API を呼び出し
       // Call LINE callback API
-      const API_BASE_URL = "http://localhost:5001/dummy-project/us-central1/api";
+      const API_BASE_URL = "https://api-y7opgn6g6q-uc.a.run.app";
+      
+      // デバッグ用ログ
+      // Debug log
+      console.log('LINE コールバックAPI呼び出し / Calling LINE callback API:', {
+        url: `${API_BASE_URL}/line-callback`,
+        params: { code, state }
+      });
+      
       const response = await axios.post(`${API_BASE_URL}/line-callback`, {
         code,
         state

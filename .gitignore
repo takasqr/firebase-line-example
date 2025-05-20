@@ -29,3 +29,9 @@ test-results
 .npmrc
 
 playground.vue
+
+# Firebase
+.firebase/
+
+# TypeScript compiled output
+functions/lib/

@@ -7,7 +7,6 @@
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
-  signInWithCustomToken,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User
@@ -61,11 +60,10 @@ export const useAuth = () => {
       isLoading.value = true;
       error.value = null;
       
-      // LINE設定の取得
-      // Get LINE configuration
-      const LINE_CHANNEL_ID = "2007305052";
-      // const LINE_CALLBACK_URL = "https://fb-line-example.firebaseapp.com/__/auth/handler";
-      const LINE_CALLBACK_URL = "https://fb-line-example.web.app";
+      // Nuxtアプリケーションから LINE 設定を取得
+      // Get LINE configuration from Nuxt application
+      const LINE_CHANNEL_ID = nuxtApp.$config?.public?.line?.channelId;
+      const LINE_CALLBACK_URL = nuxtApp.$config?.public?.line?.callbackUrl;
       
       // デバッグ用ログ
       // Debug log
@@ -139,7 +137,9 @@ export const useAuth = () => {
       
       // LINE コールバック API を呼び出し
       // Call LINE callback API
-      const API_BASE_URL = "https://api-y7opgn6g6q-uc.a.run.app";
+      // Nuxtアプリケーションから API ベース URL を取得
+      // Get API base URL from Nuxt application
+      const API_BASE_URL = nuxtApp.$config?.public?.apiBaseUrl;
       
       // デバッグ用ログ
       // Debug log
@@ -153,16 +153,29 @@ export const useAuth = () => {
         state
       });
       
-      const { token } = response.data;
+      const { user } = response.data;
       
-      if (!token) {
-        throw new Error('Failed to get authentication token');
+      if (!user) {
+        throw new Error('Failed to get user information');
       }
       
-      // Firebase にカスタムトークンでサインイン
-      // Sign in to Firebase with custom token
+      // デバッグ用ログ
+      // Debug log
+      console.log('LINE ユーザー情報 / LINE user information:', user);
+      
+      // ユーザー情報をステートに保存
+      // Save user information to state
       if (auth) {
-        await signInWithCustomToken(auth, token);
+        // 注: カスタムトークンの代わりにユーザー情報を直接使用
+        // Note: Using user information directly instead of custom token
+        // 実際のアプリケーションでは、ここで適切な認証方法を実装する必要があります
+        // In a real application, you would need to implement proper authentication here
+        user.value = {
+          uid: user.uid,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          providerId: 'line',
+        } as User;
         
         // localStorage から state と nonce を削除
         // Remove state and nonce from localStorage

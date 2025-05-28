@@ -4,7 +4,6 @@
  */
 import axios from "axios";
 import { Request, Response } from "express";
-// import * as admin from "firebase-admin";
 import { getAuth } from "firebase-admin/auth";
 
 // LINE API の設定

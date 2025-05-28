@@ -9,6 +9,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInWithCustomToken,
   type User
 } from 'firebase/auth';
 import axios from 'axios';
@@ -153,29 +154,24 @@ export const useAuth = () => {
         state
       });
       
-      const { user } = response.data;
+      const { token, user: userInfo } = response.data;
       
-      if (!user) {
+      if (!userInfo) {
         throw new Error('Failed to get user information');
       }
       
       // デバッグ用ログ
       // Debug log
-      console.log('LINE ユーザー情報 / LINE user information:', user);
+      console.log('LINE ユーザー情報 / LINE user information:', userInfo);
       
-      // ユーザー情報をステートに保存
-      // Save user information to state
-      if (auth) {
-        // 注: カスタムトークンの代わりにユーザー情報を直接使用
-        // Note: Using user information directly instead of custom token
-        // 実際のアプリケーションでは、ここで適切な認証方法を実装する必要があります
-        // In a real application, you would need to implement proper authentication here
-        user.value = {
-          uid: user.uid,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          providerId: 'line',
-        } as User;
+      // カスタムトークンを使用してFirebase Authenticationにサインイン
+      // Sign in to Firebase Authentication using custom token
+      if (auth && token) {
+        console.log('カスタムトークンでサインイン / Sign in with custom token');
+        
+        // カスタムトークンでサインイン
+        // Sign in with custom token
+        await signInWithCustomToken(auth, token);
         
         // localStorage から state と nonce を削除
         // Remove state and nonce from localStorage
@@ -185,6 +181,11 @@ export const useAuth = () => {
         // ダッシュボードページへリダイレクト
         // Redirect to dashboard page
         window.location.href = '/dashboard';
+      } else if (auth && !token) {
+        // トークンがない場合はエラーメッセージを表示
+        // Display error message if token is not available
+        console.error('カスタムトークンがありません / Custom token is not available');
+        throw new Error('Custom token is not available');
       } else {
         throw new Error('Firebase Auth is not initialized');
       }

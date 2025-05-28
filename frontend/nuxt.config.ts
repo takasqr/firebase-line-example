@@ -36,7 +36,7 @@ export default defineNuxtConfig({
     // クライアントサイドでも利用可能な変数
     // Variables available on client-side
     public: {
-      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:5001/your-project-id/us-central1/api',
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:5001/fb-line-example/us-central1/api',
       firebase: {
         apiKey: process.env.FIREBASE_API_KEY,
         authDomain: process.env.FIREBASE_AUTH_DOMAIN,

@@ -3,7 +3,9 @@
  * Firebase Functions のエントリーポイントとなるファイルです。
  */
 import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
+// import * as admin from "firebase-admin";
+import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
@@ -14,11 +16,24 @@ dotenv.config({ path: ".env.local" });
 
 // Firebase Admin SDK の初期化
 // Initialize Firebase Admin SDK
-admin.initializeApp({
-  // デフォルトの認証情報を使用
-  // Use default credentials
-  credential: admin.credential.applicationDefault(),
-});
+// 環境に応じて初期化方法を変更
+// Change initialization method depending on environment
+if (process.env.NODE_ENV === "production") {
+  // 本番環境では、プロジェクトIDを明示的に指定
+  // In production environment, specify project ID explicitly
+  // admin.initializeApp({
+  initializeApp({
+    projectId: "fb-line-example",
+    serviceAccountId:
+      "firebase-adminsdk-fbsvc@fb-line-example.iam.gserviceaccount.com",
+  });
+  console.log("Firebase Admin SDK initialized in production mode");
+} else {
+  // 開発環境（エミュレーター）では、認証情報なしで初期化
+  // In development environment (emulator), initialize without credentials
+  initializeApp();
+  console.log("Firebase Admin SDK initialized in development mode");
+}
 
 // Express アプリケーションの作成
 // Create Express application
@@ -51,9 +66,9 @@ app.post(
       // ユーザーが存在しない場合は作成
       // Create user if not exists
       try {
-        await admin.auth().getUser(uid);
+        await getAuth().getUser(uid);
       } catch (error) {
-        await admin.auth().createUser({
+        await getAuth().createUser({
           uid,
           displayName,
           photoURL,
@@ -62,7 +77,7 @@ app.post(
 
       // カスタムトークンの生成
       // Generate custom token
-      const token = await admin.auth().createCustomToken(uid);
+      const token = await getAuth().createCustomToken(uid);
 
       return res.json({ token });
     } catch (error) {

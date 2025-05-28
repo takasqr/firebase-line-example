@@ -4,6 +4,8 @@
  */
 import axios from "axios";
 import { Request, Response } from "express";
+// import * as admin from "firebase-admin";
+import { getAuth } from "firebase-admin/auth";
 
 // LINE API の設定
 // LINE API configuration
@@ -183,21 +185,60 @@ export const lineCallbackHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // ユーザー情報の返却
-    // Return user information
-    // 注: カスタムトークンの生成は権限の問題で失敗するため、
-    // 代わりにユーザー情報を直接返します
-    // Note: Custom token generation fails due to permission issues,
-    // so we return user information directly instead
-    return res.json({
-      user: {
-        uid: userId,
-        displayName,
-        photoURL: pictureUrl,
-        provider: "line",
-        accessToken: access_token,
-      },
-    });
+    // ユーザー情報の取得と処理
+    // Get and process user information
+    const userInfo = {
+      uid: userId,
+      displayName,
+      photoURL: pictureUrl,
+      provider: "line",
+    };
+
+    try {
+      // ユーザーが存在するか確認し、存在しない場合は作成
+      // Check if user exists, create if not
+      try {
+        await getAuth().getUser(userId);
+        console.log("既存ユーザーを検出 / Existing user detected:", userId);
+      } catch (userError) {
+        // ユーザーが存在しない場合は新規作成
+        // Create new user if not exists
+        console.log("新規ユーザーを作成 / Creating new user:", userId);
+        await getAuth().createUser({
+          uid: userId,
+          displayName,
+          photoURL: pictureUrl,
+        });
+      }
+
+      // カスタムトークンの生成
+      // Generate custom token
+      console.log(
+        "カスタムトークンを生成 / Generating custom token for:",
+        userId,
+      );
+      const customToken = await getAuth().createCustomToken(userId);
+
+      // カスタムトークンとユーザー情報を返却
+      // Return custom token and user information
+      return res.json({
+        token: customToken,
+        user: userInfo,
+      });
+    } catch (authError) {
+      console.error(
+        "Firebase認証エラー / Firebase authentication error:",
+        authError,
+      );
+
+      // 認証エラーが発生した場合でもユーザー情報は返す
+      // Return user information even if authentication error occurs
+      return res.json({
+        error:
+          "カスタムトークンの生成に失敗しました / Failed to generate custom token",
+        user: userInfo,
+      });
+    }
   } catch (error) {
     // より詳細なエラー情報をログに出力
     // Log more detailed error information

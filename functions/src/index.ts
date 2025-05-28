@@ -3,7 +3,6 @@
  * Firebase Functions のエントリーポイントとなるファイルです。
  */
 import * as functions from "firebase-functions";
-// import * as admin from "firebase-admin";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import express from "express";
@@ -21,7 +20,6 @@ dotenv.config({ path: ".env.local" });
 if (process.env.NODE_ENV === "production") {
   // 本番環境では、プロジェクトIDを明示的に指定
   // In production environment, specify project ID explicitly
-  // admin.initializeApp({
   initializeApp({
     projectId: "fb-line-example",
     serviceAccountId:

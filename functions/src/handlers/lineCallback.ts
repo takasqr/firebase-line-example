@@ -94,7 +94,11 @@ export const lineCallbackHandler = async (req: Request, res: Response) => {
         ? `${process.env.LINE_CHANNEL_SECRET.substring(0, 4)}...`
         : undefined,
     });
-    const { code, state } = req.body as { code?: string; state?: string };
+    const { code, state, authAction } = req.body as {
+      code?: string;
+      state?: string;
+      authAction?: string; // 'login' または 'link'
+    };
 
     if (!code) {
       return res.status(400).json({
@@ -190,23 +194,80 @@ export const lineCallbackHandler = async (req: Request, res: Response) => {
       uid: userId,
       displayName,
       photoURL: pictureUrl,
-      provider: "line",
+      provider: "oidc.line", // プロバイダーIDをLineAuthProviderと一致させる
+      providerId: "oidc.line", // 明示的にプロバイダーIDを設定
     };
 
     try {
       // ユーザーが存在するか確認し、存在しない場合は作成
       // Check if user exists, create if not
+      let userRecord;
+      let isExistingUser = false;
+      let linkInfo = null;
       try {
-        await getAuth().getUser(userId);
+        userRecord = await getAuth().getUser(userId);
+        isExistingUser = true;
         console.log("既存ユーザーを検出 / Existing user detected:", userId);
+
+        // プロバイダー情報を取得
+        // Get provider information
+        const providerData = userRecord.providerData || [];
+        const linkedProviders = providerData.map(
+          (provider) => provider.providerId,
+        );
+
+        console.log(
+          "リンク済みプロバイダー / Linked providers:",
+          linkedProviders,
+        );
+
+        // LINE認証情報が既にリンクされているか確認
+        // Check if LINE authentication information is already linked
+        const isLinkedWithLine = linkedProviders.includes("oidc.line");
+
+        // メール認証情報が既にリンクされているか確認
+        // Check if email authentication information is already linked
+        const isLinkedWithEmail = linkedProviders.includes("password");
+
+        // Google認証情報が既にリンクされているか確認
+        // Check if Google authentication information is already linked
+        const isLinkedWithGoogle = linkedProviders.includes("google.com");
+
+        // リンク情報をレスポンスに含める
+        // Include link information in response
+        linkInfo = {
+          isLinkedWithLine,
+          isLinkedWithEmail,
+          isLinkedWithGoogle,
+          email: userRecord.email,
+          linkedProviders,
+        };
       } catch (userError) {
         // ユーザーが存在しない場合は新規作成
         // Create new user if not exists
         console.log("新規ユーザーを作成 / Creating new user:", userId);
-        await getAuth().createUser({
+        userRecord = await getAuth().createUser({
           uid: userId,
           displayName,
           photoURL: pictureUrl,
+        });
+      }
+
+      // アクションがリンクの場合の処理
+      // Process for link action
+      if (authAction === "link") {
+        console.log("アカウントリンク処理 / Account linking process");
+        // リンク処理の結果を返す
+        // Return link process result
+        return res.json({
+          user: userInfo,
+          providerId: "oidc.line",
+          isExistingUser,
+          linkInfo,
+          linkResult: {
+            success: true,
+            message: "LINEアカウントがリンクされました / LINE account linked",
+          },
         });
       }
 
@@ -216,13 +277,25 @@ export const lineCallbackHandler = async (req: Request, res: Response) => {
         "カスタムトークンを生成 / Generating custom token for:",
         userId,
       );
-      const customToken = await getAuth().createCustomToken(userId);
+      // カスタムクレームにプロバイダー情報を含める
+      // Include provider information in custom claims
+      const customClaims = {
+        provider: "oidc.line",
+        providerId: "oidc.line",
+      };
+      const customToken = await getAuth().createCustomToken(
+        userId,
+        customClaims,
+      );
 
       // カスタムトークンとユーザー情報を返却
       // Return custom token and user information
       return res.json({
         token: customToken,
         user: userInfo,
+        providerId: "oidc.line", // 明示的にプロバイダーIDを返す
+        isExistingUser,
+        linkInfo,
       });
     } catch (authError) {
       console.error(
@@ -236,6 +309,9 @@ export const lineCallbackHandler = async (req: Request, res: Response) => {
         error:
           "カスタムトークンの生成に失敗しました / Failed to generate custom token",
         user: userInfo,
+        providerId: "oidc.line", // 明示的にプロバイダーIDを返す
+        isExistingUser: false,
+        linkInfo: null,
       });
     }
   } catch (error) {

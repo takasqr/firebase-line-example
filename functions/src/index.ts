@@ -43,7 +43,7 @@ app.use(cors({ origin: true }));
 
 // LINE OAuth コールバックハンドラーのインポート
 // Import LINE OAuth callback handler
-import { lineCallbackHandler } from "./handlers/lineCallback";
+import { lineCallbackHandler } from "./handlers/line";
 
 // ルーティングの設定
 // Configure routing

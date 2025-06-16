@@ -183,7 +183,7 @@ export class LineAuthProvider implements AuthProvider {
         authAction
       });
       
-      const { token, user: userInfo, isExistingUser, linkInfo, linkResult } = response.data;
+      const { customToken: token, user: userInfo, isExistingUser, linkInfo, linkResult } = response.data;
       
       // localStorageをクリア
       // Clear localStorage

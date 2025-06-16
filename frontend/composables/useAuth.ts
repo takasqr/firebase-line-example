@@ -11,6 +11,7 @@ import {
   onAuthStateChanged,
   type User
 } from 'firebase/auth';
+import { useRuntimeConfig, useNuxtApp } from 'nuxt/app';
 import { LineAuthProvider } from '../auth/lineAuthProvider';
 
 /**
@@ -25,6 +26,10 @@ export const useAuth = () => {
   // Get Nuxt application
   // @ts-ignore
   const nuxtApp = useNuxtApp();
+  
+  // ランタイム設定の取得
+  // Get runtime configuration
+  const config = useRuntimeConfig();
   
   // Firebase Auth の取得
   // Get Firebase Auth
@@ -46,9 +51,9 @@ export const useAuth = () => {
     }
     
     return new LineAuthProvider(app, auth, {
-      apiBaseUrl: nuxtApp.$config?.public?.apiBaseUrl,
-      channelId: nuxtApp.$config?.public?.line?.channelId,
-      callbackUrl: nuxtApp.$config?.public?.line?.callbackUrl
+      apiBaseUrl: config.public.apiBaseUrl as string,
+      channelId: (config.public.line as any).channelId,
+      callbackUrl: (config.public.line as any).callbackUrl
     });
   };
   

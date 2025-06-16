@@ -8,19 +8,21 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { useRuntimeConfig, defineNuxtPlugin } from 'nuxt/app';
 
 // @ts-ignore
 export default defineNuxtPlugin((nuxtApp) => {
   try {
-    // 環境変数から Firebase 設定を直接取得
-    // Get Firebase configuration directly from environment variables
+    // runtimeConfig から Firebase 設定を取得
+    // Get Firebase configuration from runtimeConfig
+    const config = useRuntimeConfig();
     const firebaseConfig = {
-      apiKey: process.env.FIREBASE_API_KEY || "AIzaSyCdAURAWe3LiqP4KFmrA_Pw1vOyJGwtGYU",
-      authDomain: process.env.FIREBASE_AUTH_DOMAIN || "fb-line-example.firebaseapp.com",
-      projectId: process.env.FIREBASE_PROJECT_ID || "fb-line-example",
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "fb-line-example.firebasestorage.app",
-      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "505150781069",
-      appId: process.env.FIREBASE_APP_ID || "1:505150781069:web:612035b4c5d18e12e214c4"
+      apiKey: (config.public.firebase as any).apiKey,
+      authDomain: (config.public.firebase as any).authDomain,
+      projectId: (config.public.firebase as any).projectId,
+      storageBucket: (config.public.firebase as any).storageBucket,
+      messagingSenderId: (config.public.firebase as any).messagingSenderId,
+      appId: (config.public.firebase as any).appId
     };
 
     // Firebase の初期化

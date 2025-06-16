@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(npm --prefix functions run lint --fix)",
+      "Bash(firebase use:*)",
+      "Bash(firebase projects:list:*)",
+      "Bash(firebase hosting:sites:list:*)",
+      "Bash(firebase functions:log:*)",
+      "Bash(npm run deploy:*)"
+    ],
+    "deny": []
+  }
+}

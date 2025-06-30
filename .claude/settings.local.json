@@ -9,7 +9,26 @@
       "Bash(firebase projects:list:*)",
       "Bash(firebase hosting:sites:list:*)",
       "Bash(firebase functions:log:*)",
-      "Bash(npm run deploy:*)"
+      "Bash(npm run deploy:*)",
+      "Bash(rg:*)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(rm:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(mv:*)",
+      "Bash(echo)",
+      "Bash(mkdir:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

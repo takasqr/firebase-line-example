@@ -53,22 +53,32 @@ firebase deploy --only hosting      # Hostingのみデプロイ
 
 ### バックエンド (`/functions/`)
 - Firebase Functions上の**Express.js**アプリケーション
-- **メインハンドラー**: `src/handlers/lineCallback.ts` - LINE OAuthコールバック処理
-- **エクスポートファイル**: `src/handlers/line.ts` - lineCallbackHandlerをエクスポート
+- **LINE OAuthハンドラー**: `src/handlers/lineCallback.ts` - LINE OAuthコールバック処理
+- **LINE Messaging API Webhook**: `src/handlers/lineWebhook.ts` - Webhookイベント処理
 - Firebase Admin SDKを使用した**カスタムトークン生成**（カスタムクレーム付き）
 - **アカウントリンク機能**: 既存ユーザーへのLINE認証追加サポート
+- **Webhook署名検証**: LINE Messaging API用の署名検証機能
+- **メッセージ自動返信**: テキストメッセージへのエコー返信とキーワード応答
 - クロスオリジンリクエスト用の**CORS設定**
 - **環境変数管理**: dotenvによる.env.local読み込み
 
 ### 認証フロー
-1. フロントエンドがstate/nonceでLINE OAuthにリダイレクト
-2. LINEがコールバックに認証コードを返却
+1. フロントエンドがstate/nonce/bot_prompt=aggressiveでLINE OAuthにリダイレクト
+2. LINEがコールバックに認証コードを返却（bot_prompt効果で友だち追加画面表示）
 3. フロントエンドがURLから認証コードを取得
 4. バックエンドにPOSTリクエストでコードとstateを送信
 5. バックエンドがコードをアクセストークンに交換し、ユーザープロフィールを取得
 6. バックエンドが既存ユーザーチェックとプロバイダー情報を取得
 7. バックエンドがFirebaseカスタムトークンを作成（カスタムクレーム付き）
 8. フロントエンドがカスタムトークンでFirebase Authenticationにサインイン
+
+### LINE Messaging APIフロー
+1. LINEプラットフォームからWebhookイベントを受信（/webhook）
+2. 署名検証でリクエストの正当性を確認
+3. イベントタイプに応じた処理を実行：
+   - **messageイベント**: テキストメッセージのエコー返信・キーワード応答
+   - **followイベント**: 友だち追加時のウェルカムメッセージ送信
+   - **unfollowイベント**: アンフォロー記録（返信不可）
 
 ## 環境変数
 
@@ -92,10 +102,14 @@ API_BASE_URL=
 
 ### バックエンド (`functions/.env.local`)
 ```
-# LINE API設定
+# LINE Login API設定
 LINE_CHANNEL_ID=
 LINE_CHANNEL_SECRET=
 LINE_CALLBACK_URL=
+
+# LINE Messaging API設定（別チャネル）
+LINE_MESSAGING_CHANNEL_ACCESS_TOKEN=
+LINE_MESSAGING_CHANNEL_SECRET=
 ```
 
 ## テスト
@@ -108,10 +122,21 @@ LINE_CALLBACK_URL=
 
 ## 重要なファイル
 
+### 設定ファイル
 - `firebase.json` - ホスティング/ファンクション設定を含むFirebaseプロジェクト設定
 - `frontend/nuxt.config.ts` - FirebaseとLINE OAuth設定を含むNuxt設定（SSR無効化）
 - `functions/src/index.ts` - Expressアプリエントリーポイント（Firebase Admin SDK初期化）
+
+### 認証関連
 - `functions/src/handlers/lineCallback.ts` - コアLINE OAuthロジック（アカウントリンク対応）
-- `functions/src/handlers/line.ts` - lineCallbackHandlerエクスポート用ファイル
 - `frontend/composables/useAuth.ts` - 認証状態管理（リンク機能含む）
-- `frontend/auth/lineAuthProvider.ts` - カスタムLINE認証プロバイダー
+- `frontend/auth/lineAuthProvider.ts` - カスタムLINE認証プロバイダー（bot_prompt対応）
+
+### Messaging API関連
+- `functions/src/handlers/lineWebhook.ts` - LINE Messaging API Webhook処理
+- `LINE_MESSAGING_API_SETUP.md` - Messaging APIセットアップガイド
+
+### エンドポイント
+- `POST /line-callback` - LINE OAuthコールバック処理
+- `POST /webhook` - LINE Messaging API Webhook
+- `POST /auth/custom-token` - カスタムトークン生成API

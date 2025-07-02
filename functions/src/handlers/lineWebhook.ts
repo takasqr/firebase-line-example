@@ -8,6 +8,8 @@
 import { Request, Response } from "express";
 import * as crypto from "crypto";
 import axios from "axios";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { UserDocument } from "../types";
 
 // LINE API設定
 // LINE API configuration
@@ -132,6 +134,48 @@ const handleMessageEvent = async (event: any) => {
 };
 
 /**
+ * ユーザーをFirestoreに保存する
+ * Save user to Firestore
+ */
+const saveUserToFirestore = async (userId: string) => {
+  const db = getFirestore();
+
+  try {
+    // LINEプロフィール情報を取得
+    const profileResponse = await axios.get(
+      `https://api.line.me/v2/bot/profile/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${LINE_MESSAGING_CHANNEL_ACCESS_TOKEN}`,
+        },
+      },
+    );
+
+    const profile = profileResponse.data;
+
+    const userDoc: UserDocument = {
+      lineUserId: userId,
+      displayName: profile.displayName || "Unknown User",
+      profilePictureUrl: profile.pictureUrl,
+      followedAt: Timestamp.now(),
+      isActive: true,
+    };
+
+    // ユーザードキュメントを作成または更新
+    await db.collection("users").doc(userId).set(userDoc, { merge: true });
+
+    console.log(
+      `ユーザー ${userId} をFirestoreに保存しました / Saved user ${userId} to Firestore`,
+    );
+  } catch (error) {
+    console.error(
+      `ユーザー ${userId} の保存に失敗しました / Failed to save user ${userId}:`,
+      error,
+    );
+  }
+};
+
+/**
  * フォローイベントを処理する
  * Process follow event
  */
@@ -144,6 +188,9 @@ const handleFollowEvent = async (event: any) => {
   console.log(
     `新しいユーザー ${userId} がフォローしました / New user ${userId} followed`,
   );
+
+  // ユーザー情報をFirestoreに保存
+  await saveUserToFirestore(userId);
 
   const welcomeMessages = [
     {
@@ -170,6 +217,22 @@ const handleUnfollowEvent = async (event: any) => {
   console.log(
     `ユーザー ${userId} がアンフォローしました / User ${userId} unfollowed`,
   );
+
+  // ユーザーを非アクティブに更新
+  const db = getFirestore();
+  try {
+    await db.collection("users").doc(userId).update({
+      isActive: false,
+    });
+    console.log(
+      `ユーザー ${userId} を非アクティブに更新しました / Updated user ${userId} to inactive`,
+    );
+  } catch (error) {
+    console.error(
+      `ユーザー ${userId} の非アクティブ更新に失敗しました / Failed to update user ${userId} to inactive:`,
+      error,
+    );
+  }
 
   // アンフォロー時はreplyTokenがないため、返信はできません
   // Cannot reply when unfollowed because there is no replyToken

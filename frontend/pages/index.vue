@@ -81,7 +81,7 @@ import { useAuth } from '../composables/useAuth';
 // Use authentication state management composable
 const { user, isAuthenticated, isLoading, error } = useAuth();
 
-function login() {
+async function login() {
 
   // ランタイム設定の取得
   // Get runtime configuration
@@ -93,10 +93,23 @@ function login() {
   const state = crypto.randomUUID(); // CSRF対策
   const nonce = crypto.randomUUID(); // IDトークン検証用
 
+  // SHA256ハッシュを計算する関数
+  const sha256 = async (text: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // nonceをハッシュ化
+  const hashedNonce = await sha256(nonce);
+
   localStorage.setItem('line_auth_state', state);
   localStorage.setItem('line_auth_nonce', nonce);
+  localStorage.setItem('line_auth_hashed_nonce', hashedNonce);
 
-  const loginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=openid%20profile&nonce=${nonce}`;
+  const loginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=openid%20profile&nonce=${hashedNonce}`;
 
   window.location.href = loginUrl;
 }

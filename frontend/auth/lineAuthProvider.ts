@@ -6,7 +6,7 @@
  * Implements LINE as a custom OAuth provider for Firebase.
  */
 import type { FirebaseApp } from 'firebase/app';
-import { signInWithCustomToken } from 'firebase/auth';
+// import { signInWithCredential, OAuthProvider } from 'firebase/auth';
 import type {
   Auth,
   UserCredential,
@@ -93,6 +93,19 @@ export class LineAuthProvider implements AuthProvider {
   }
 
   /**
+   * SHA256ハッシュを計算する
+   * Calculate SHA256 hash
+   */
+  private async sha256(text: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  }
+
+  /**
    * LINE認証を開始する
    * Start LINE authentication
    * 
@@ -104,12 +117,26 @@ export class LineAuthProvider implements AuthProvider {
       // stateとnonceを生成
       // Generate state and nonce
       const state = Math.random().toString(36).substring(2, 15);
-      const nonce = Math.random().toString(36).substring(2, 15);
+      const rawNonce = Math.random().toString(36).substring(2, 15);
       
-      // localStorageに保存
-      // Save to localStorage
+      // nonceをSHA256でハッシュ化（OpenID Connect仕様）
+      // Hash nonce with SHA256 (OpenID Connect specification)
+      const hashedNonce = await this.sha256(rawNonce);
+      
+      // localStorageに保存（rawNonceとhashedNonceを保存）
+      // Save to localStorage (save rawNonce and hashedNonce)
       localStorage.setItem('line_auth_state', state);
-      localStorage.setItem('line_auth_nonce', nonce);
+      localStorage.setItem('line_auth_nonce', rawNonce);
+      localStorage.setItem('line_auth_hashed_nonce', hashedNonce);
+      
+      // 保存確認のためのデバッグログ
+      // Debug log to confirm saving
+      console.log('localStorage保存確認 / localStorage save confirmation:', {
+        state: localStorage.getItem('line_auth_state'),
+        nonce: localStorage.getItem('line_auth_nonce'),
+        hashedNonce: localStorage.getItem('line_auth_hashed_nonce'),
+        storageLength: localStorage.length
+      });
       
       // デバッグ用ログ
       // Debug log
@@ -117,18 +144,19 @@ export class LineAuthProvider implements AuthProvider {
         channelId: this.channelId,
         callbackUrl: this.callbackUrl,
         state,
-        nonce: nonce.substring(0, 3) + '...' // nonceの一部のみ表示 / Show only part of nonce
+        rawNonce: rawNonce.substring(0, 3) + '...',
+        hashedNonce: hashedNonce.substring(0, 8) + '...'
       });
       
-      // LINE認証URLへリダイレクト
-      // Redirect to LINE authentication URL
+      // LINE認証URLへリダイレクト（ハッシュ化されたnonceを送信）
+      // Redirect to LINE authentication URL (send hashed nonce)
       const lineAuthUrl = new URL('https://access.line.me/oauth2/v2.1/authorize');
       lineAuthUrl.searchParams.append('response_type', 'code');
       lineAuthUrl.searchParams.append('client_id', this.channelId);
       lineAuthUrl.searchParams.append('redirect_uri', this.callbackUrl);
       lineAuthUrl.searchParams.append('state', state);
       lineAuthUrl.searchParams.append('scope', 'profile openid');
-      lineAuthUrl.searchParams.append('nonce', nonce);
+      lineAuthUrl.searchParams.append('nonce', hashedNonce); // ハッシュ化されたnonceを使用
       
       window.location.href = lineAuthUrl.toString();
     } catch (error) {
@@ -150,20 +178,70 @@ export class LineAuthProvider implements AuthProvider {
    */
   async handleCallback(code: string, state: string): Promise<UserCredential | any> {
     try {
-      // stateの検証
-      // Validate state
+      // stateとnonceの検証
+      // Validate state and nonce
       const savedState = localStorage.getItem('line_auth_state');
+      const savedNonce = localStorage.getItem('line_auth_nonce');
+      const savedHashedNonce = localStorage.getItem('line_auth_hashed_nonce');
+      
+      // 詳細なlocalStorage状態をログ出力
+      // Log detailed localStorage state
+      console.log('localStorage全体の確認 / Full localStorage check:', {
+        length: localStorage.length,
+        allKeys: Object.keys(localStorage),
+        lineAuthState: localStorage.getItem('line_auth_state'),
+        lineAuthNonce: localStorage.getItem('line_auth_nonce'),
+        lineAuthHashedNonce: localStorage.getItem('line_auth_hashed_nonce')
+      });
       
       // デバッグ用ログ
       // Debug log
       console.log('LINE コールバック検証 / LINE callback validation:', {
         receivedState: state,
         savedState,
-        isValid: state === savedState
+        isStateValid: state === savedState,
+        hasNonce: !!savedNonce,
+        hasHashedNonce: !!savedHashedNonce,
+        noncePartial: savedNonce ? savedNonce.substring(0, 3) + '...' : null,
+        hashedNoncePartial: savedHashedNonce ? savedHashedNonce.substring(0, 8) + '...' : null
       });
       
       if (state !== savedState) {
+        console.error('State validation failed:', { received: state, saved: savedState });
         throw new Error('Invalid state parameter');
+      }
+      
+      if (!savedNonce || !savedHashedNonce) {
+        console.error('Nonce validation failed:', { 
+          hasNonce: !!savedNonce, 
+          hasHashedNonce: !!savedHashedNonce,
+          localStorage: Object.keys(localStorage)
+        });
+        
+        // nonceなしでも継続を試行（デバッグ用）
+        // Try to continue without nonce (for debugging)
+        console.warn('Continuing without nonce validation for debugging purposes');
+        
+        // 代替処理：nonceなしでバックエンドを呼び出し
+        // Alternative: call backend without nonce
+        const response = await axios.post(`${this.apiBaseUrl}/line-callback`, {
+          code,
+          state,
+          authAction: localStorage.getItem('auth_action') || 'login'
+          // nonce and hashedNonce are omitted
+        });
+        
+        const { customToken } = response.data;
+        
+        // カスタムトークンでサインイン（IDトークンは使用しない）
+        // Sign in with custom token (don't use ID token)
+        if (customToken) {
+          const { signInWithCustomToken } = await import('firebase/auth');
+          const userCredential = await signInWithCustomToken(this.auth, customToken);
+          return userCredential;
+        } else {
+          throw new Error('No authentication token available');
+        }
       }
       
       // 認証アクションを取得（通常ログインかリンクか）
@@ -174,21 +252,34 @@ export class LineAuthProvider implements AuthProvider {
       // Call backend API
       console.log('LINE コールバックAPI呼び出し / Calling LINE callback API:', {
         url: `${this.apiBaseUrl}/line-callback`,
-        params: { code, state, authAction }
+        params: { 
+          code, 
+          state, 
+          authAction, 
+          nonce: savedNonce ? savedNonce.substring(0, 3) + '...' : null,
+          hashedNonce: savedHashedNonce ? savedHashedNonce.substring(0, 8) + '...' : null
+        }
       });
       
       const response = await axios.post(`${this.apiBaseUrl}/line-callback`, {
         code,
         state,
-        authAction
+        authAction,
+        nonce: savedNonce,
+        hashedNonce: savedHashedNonce
       });
       
-      const { customToken: token, user: userInfo, isExistingUser, linkInfo, linkResult } = response.data;
+      const { customToken, idToken: id_token, user: userInfo, isExistingUser, linkInfo, linkResult } = response.data;
       
+      console.log('response.data: ', response.data)
+
+      console.log('idToken: ', id_token)
+
       // localStorageをクリア
       // Clear localStorage
       localStorage.removeItem('line_auth_state');
       localStorage.removeItem('line_auth_nonce');
+      localStorage.removeItem('line_auth_hashed_nonce');
       localStorage.removeItem('auth_action');
       
       // アクションに応じた処理
@@ -207,8 +298,8 @@ export class LineAuthProvider implements AuthProvider {
       
       // 通常のログイン処理
       // Normal login process
-      if (!token) {
-        throw new Error('Failed to get custom token');
+      if (!id_token && !customToken) {
+        throw new Error('Failed to get authentication token');
       }
       
       if (!userInfo) {
@@ -221,14 +312,71 @@ export class LineAuthProvider implements AuthProvider {
         ...userInfo,
         providerId: this.providerId,
         isExistingUser,
-        linkInfo
+        linkInfo,
+        hasIdToken: !!id_token,
+        hasCustomToken: !!customToken
       });
       
-      // カスタムトークンでサインイン
-      // Sign in with custom token
-      console.log('カスタムトークンでサインイン / Sign in with custom token');
-      const userCredential = await signInWithCustomToken(this.auth, token);
+      let userCredential;
       
+      // カスタムトークンを優先的に使用（LINE OIDCの署名検証問題を回避）
+      // Prefer custom token (avoid LINE OIDC signature verification issues)
+       
+      // if (id_token) {
+      //   // IDトークンが利用可能な場合の処理
+      //   // Process when ID token is available
+      //   console.log('LINE IDトークンでサインイン / Sign in with LINE ID token');
+      //   console.log('Using nonce for Firebase credential:', savedNonce ? savedNonce.substring(0, 3) + '...' : 'null');
+        
+      //   try {
+      //     const provider = new OAuthProvider("oidc.line");
+          
+      //     // プロバイダーの追加スコープを設定（必要に応じて）
+      //     // provider.addScope('openid');
+      //     // provider.addScope('profile');
+          
+      //     // カスタムパラメータを設定
+      //     // provider.setCustomParameters({
+      //     //   prompt: 'consent'
+      //     // });
+          
+      //     // const credential = provider.credential({
+      //     //   idToken: id_token,
+      //     // });
+
+      //     const credential = provider.credential({
+      //       idToken: id_token,
+      //       rawNonce: savedNonce,
+      //     });
+          
+      //     console.log('Firebase認証を実行 / Executing Firebase authentication');
+      //     userCredential = await signInWithCredential(this.auth, credential);
+      //     console.log('IDトークン認証成功 / ID token authentication successful');
+      //   } catch (error: any) {
+      //     console.error('IDトークン認証エラー / ID token authentication error:', error);
+      //     console.error('エラーコード / Error code:', error.code);
+      //     console.error('エラーメッセージ / Error message:', error.message);
+          
+      //     // 詳細なエラー情報をログ出力
+      //     if (error.code === 'auth/invalid-credential') {
+      //       console.error('認証情報が無効です。Firebaseコンソールで以下を確認してください：');
+      //       console.error('1. OIDCプロバイダーIDが"oidc.line"に設定されているか');
+      //       console.error('2. Client IDとIssuer URLが正しく設定されているか');
+      //       console.error('3. プロバイダーが有効になっているか');
+      //     }
+          
+      //     throw error;
+      //   }
+      // } else if (customToken) {
+      if (customToken) {
+        console.log('カスタムトークンでサインイン / Sign in with custom token');
+        const { signInWithCustomToken } = await import('firebase/auth');
+        userCredential = await signInWithCustomToken(this.auth, customToken);
+      } 
+      else {
+        throw new Error('No authentication token available');
+      }
+
       // 既存ユーザーで未リンクのプロバイダーがある場合
       // If existing user has unlinked providers
       if (isExistingUser && linkInfo) {

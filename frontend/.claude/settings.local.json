@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:developers.line.biz)",
+      "Bash(rm:*)",
+      "Bash(npm --prefix /workspaces/firebase-line-example/functions run lint:fix)",
+      "Bash(firebase deploy:*)"
+    ],
+    "deny": []
+  }
+}

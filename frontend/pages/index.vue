@@ -109,7 +109,7 @@ async function login() {
   localStorage.setItem('line_auth_nonce', nonce);
   localStorage.setItem('line_auth_hashed_nonce', hashedNonce);
 
-  const loginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=openid%20profile&nonce=${hashedNonce}`;
+  const loginUrl = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=openid%20profile&nonce=${hashedNonce}&bot_prompt=aggressive`;
 
   window.location.href = loginUrl;
 }

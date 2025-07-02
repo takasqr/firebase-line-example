@@ -157,6 +157,7 @@ export class LineAuthProvider implements AuthProvider {
       lineAuthUrl.searchParams.append('state', state);
       lineAuthUrl.searchParams.append('scope', 'profile openid');
       lineAuthUrl.searchParams.append('nonce', hashedNonce); // ハッシュ化されたnonceを使用
+      lineAuthUrl.searchParams.append('bot_prompt', 'aggressive'); // bot_promptをaggressiveに設定
       
       window.location.href = lineAuthUrl.toString();
     } catch (error) {

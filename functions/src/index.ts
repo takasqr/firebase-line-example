@@ -45,9 +45,17 @@ app.use(cors({ origin: true }));
 // Import LINE OAuth callback handler
 import { lineCallbackHandler } from "./handlers/lineCallback";
 
+// LINE Messaging API Webhookハンドラーのインポート
+// Import LINE Messaging API Webhook handler
+import { lineWebhookHandler } from "./handlers/lineWebhook";
+
 // ルーティングの設定
 // Configure routing
 app.post("/line-callback", lineCallbackHandler);
+
+// LINE Messaging API Webhook エンドポイント
+// LINE Messaging API Webhook endpoint
+app.post("/webhook", lineWebhookHandler);
 
 // カスタムトークン生成API
 // Custom token generation API

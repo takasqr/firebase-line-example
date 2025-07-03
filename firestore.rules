@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 全てのクライアントアクセスを拒否
+    // Firebase Admin SDK のみがアクセス可能（ルールをバイパス）
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

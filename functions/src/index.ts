@@ -174,13 +174,39 @@ app.get("/messages", async (req: express.Request, res: express.Response) => {
   }
 });
 
+// 管理者権限設定API
+// Admin privilege setting API
+app.post(
+  "/auth/set-admin",
+  async (req: express.Request, res: express.Response) => {
+    try {
+      const { uid, isAdmin } = req.body;
+
+      if (!uid) {
+        return res.status(400).json({ error: "UID is required" });
+      }
+
+      // 管理者権限をカスタムクレームに設定
+      await getAuth().setCustomUserClaims(uid, { admin: isAdmin });
+
+      return res.json({ 
+        success: true, 
+        message: `Admin privilege ${isAdmin ? 'granted' : 'revoked'} for user ${uid}` 
+      });
+    } catch (error) {
+      console.error("Error setting admin privilege:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
 // カスタムトークン生成API
 // Custom token generation API
 app.post(
   "/auth/custom-token",
   async (req: express.Request, res: express.Response) => {
     try {
-      const { uid, displayName, photoURL } = req.body;
+      const { uid, displayName, photoURL, lineUserId } = req.body;
 
       if (!uid) {
         return res.status(400).json({ error: "UID is required" });
@@ -198,9 +224,15 @@ app.post(
         });
       }
 
+      // カスタムクレームを設定（LINE情報を含む）
+      const customClaims: any = {};
+      if (lineUserId) {
+        customClaims.lineUserId = lineUserId;
+      }
+
       // カスタムトークンの生成
       // Generate custom token
-      const token = await getAuth().createCustomToken(uid);
+      const token = await getAuth().createCustomToken(uid, customClaims);
 
       return res.json({ token });
     } catch (error) {
